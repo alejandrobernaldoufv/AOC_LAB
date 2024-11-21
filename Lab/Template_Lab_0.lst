@@ -1,0 +1,110 @@
+# file opened: C:\Users\javie\OneDrive\Desktop\AOC_MainFolder\Lab_4\Template_Lab_0.asm
+  1   0000                      DEVICE ZXSPECTRUM48
+  2   0000                      SLDOPT COMMENT WPMEM, LOGPOINT, ASSERTION
+  3   0000                      org $8000              ; Program is located from memory address $8000 = 32768
+  4   8000
+  5   8000 F3           begin:  di              ; Disable Interrupts
+  6   8001 31 00 00             ld sp,0         ; Set stack pointer to top of ram (RAMTOP)
+  7   8004
+  8   8004              ;-------------------------------------------------------------------------------------------------
+  9   8004              ; Student Code
+ 10   8004 DD 21 00 58          ld ix, $5800    ; Top left of screen attribute memory
+ 11   8008 FD 21 FF 5A          ld iy, $5AFF    ; Bottom right of screen attribute memory
+ 12   800C 16 08                ld d, 8         ; Initial color (BLUE) for the line
+ 13   800E
+ 14   800E              mainLoop:
+ 15   800E CD 1F 80             call linSup     ; Paint upper line at the right speed
+ 16   8011 CD 3A 80             call linInf     ; Paint lower line at the right speed
+ 17   8014 C3 0E 80             jp mainLoop
+ 18   8017
+ 19   8017 18 FE        endofcode:      jr endofcode    ; Infinite loop
+ 20   8019
+ 21   8019 FA 00        T1: DW T1RESET       ; Timer for upper line
+ 22   801B B8 0B        T2: DW T2RESET       ; Timer for lower Line
+ 23   801D B8 0B        T3: DW T3RESET       ; Timer for keyboard input
+ 24   801F
+ 25   801F              T1RESET: EQU 250     ; Timer values for upper line
+ 26   801F              T2RESET: EQU 3000    ; Timer values for lower line
+ 27   801F              T3RESET: EQU 3000    ; Timer values for keyboard input
+ 28   801F              ;-------------------------------------------------------------------------------------------------
+ 29   801F              ; linSup : Paints a fixed-color dot at MEM[IX] at timer intervals. Increments IX
+ 30   801F              ; Receives:    IX pointing to screen memory.
+ 31   801F              ; Returns:     IX gets incremented
+ 32   801F
+ 33   801F              linSup:
+ 34   801F D5                   push de
+ 35   8020 16 08                ld d, 8         ; Blue color for the line
+ 36   8022 21 19 80             ld hl, T1
+ 37   8025 E5                   push hl
+ 38   8026 CD 72 80             call timer
+ 39   8029 20 0C                jr nz, exitLinSup
+ 40   802B DD 72 00             ld (ix), d
+ 41   802E DD 23                inc ix
+ 42   8030 01 FA 00             ld bc, T1RESET
+ 43   8033 71 23 70 2B          ld (hl), bc
+ 44   8037
+ 45   8037              exitLinSup:
+ 46   8037 E1                   pop hl
+ 47   8038 D1                   pop de
+ 48   8039 C9                   ret
+ 49   803A
+ 50   803A              ; linInf : Paints dot at MEM[IY] in color D at timer intervals. Decrements IY
+ 51   803A              ; Receives:    IY pointing to screen memory. D as color to paint
+ 52   803A              ; Returns:     IY gets decremented
+ 53   803A
+ 54   803A              linInf:
+ 55   803A D5                   push de
+ 56   803B 21 1B 80             ld hl, T2
+ 57   803E E5                   push hl
+ 58   803F CD 72 80             call timer
+ 59   8042 20 0F                jr nz, exitLinInf
+ 60   8044 CD 56 80             call keyboard           ; Check if "Space" is pressed to update color
+ 61   8047 FD 72 00             ld (iy), d              ; Paint with updated color
+ 62   804A FD 2B                dec iy
+ 63   804C 01 B8 0B             ld bc, T2RESET
+ 64   804F 71 23 70 2B          ld (hl), bc
+ 65   8053
+ 66   8053              exitLinInf:
+ 67   8053 E1                   pop hl
+ 68   8054 D1                   pop de
+ 69   8055 C9                   ret
+ 70   8056
+ 71   8056              ; Keyboard : Reads keyboard (Space) and increments D to change color
+ 72   8056              ; Receives:  D=D+1 if Space is pressed (bit 0 of $7FFE).
+ 73   8056              ;            Resets keyboard timer if Space is pressed.
+ 74   8056
+ 75   8056              keyboard:
+ 76   8056 E5                   push hl
+ 77   8057 21 1D 80             ld hl, T3
+ 78   805A CD 72 80             call timer
+ 79   805D 20 11                jr nz, noKey         ; If timer hasn't expired, don't check keyboard
+ 80   805F
+ 81   805F 01 FE 7F             ld bc, $7FFE
+ 82   8062 ED 78                in a, (c)
+ 83   8064 CB 47                bit 0, a             ; Check bit 0 for "Space" key
+ 84   8066 20 08                jr nz, noKey         ; If "Space" is not pressed, skip
+ 85   8068 14                   inc d                ; Increment D to change color
+ 86   8069 01 B8 0B             ld bc, T3RESET
+ 87   806C 71 23 70 2B          ld (hl), bc          ; Reset keyboard timer
+ 88   8070
+ 89   8070              noKey:
+ 90   8070 E1                   pop hl
+ 91   8071 C9                   ret
+ 92   8072
+ 93   8072              ; Timer : Decrements a 16-bit variable until it reaches zero
+ 94   8072              ; Receives: HL pointing to 16-bit variable.
+ 95   8072              ;           Var=Var-1 if Var>0
+ 96   8072              ; Returns:  Z flag if reached 0. NZ otherwise
+ 97   8072
+ 98   8072              timer:
+ 99   8072 C5                   push bc
+100   8073 4E 23 46 2B          ld bc, (hl)
+101   8077 78                   ld a,b
+102   8078 B1                   or c
+103   8079 28 05                jr z, exitTimer
+104   807B 0B                   dec bc
+105   807C 71 23 70 2B          ld (hl),bc
+106   8080              exitTimer:
+107   8080 C1                   pop bc
+108   8081 C9                   ret
+# file closed: C:\Users\javie\OneDrive\Desktop\AOC_MainFolder\Lab_4\Template_Lab_0.asm
